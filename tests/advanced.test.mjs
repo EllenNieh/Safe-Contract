@@ -1,0 +1,13 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {analyzeMessage,auditDesign,estimateLoss,story} from '../src/advanced-engine.mjs';
+test('空訊息不會報錯',()=>assert.equal(analyzeMessage('').score,0));
+test('高風險詐騙訊息命中多個規則',()=>{const r=analyzeMessage('立即提供助記詞，先付解凍費，點擊連結');assert.ok(r.score>=65);assert.ok(r.hits.length>=3)});
+test('一般物流訊息不會誤標為高風險',()=>assert.equal(analyzeMessage('您好，商品已出貨，請至原購物平台查詢物流').score,0));
+test('單一警訊可追溯到解釋',()=>assert.ok(analyzeMessage('保證獲利').advice[0].length>0));
+test('空安全清單得分為零',()=>assert.equal(auditDesign([]).score,0));
+test('完整安全清單得分100',()=>assert.equal(auditDesign([0,1,2,3,4,5,6]).score,100));
+test('重複選項不重複加分',()=>assert.equal(auditDesign([0,0]).score,18));
+test('預期損失試算正確',()=>{const r=estimateLoss({amount:10000,risk:30,protect:80,fee:1});assert.ok(Math.abs(r.direct-3000)<1e-8);assert.ok(Math.abs(r.escrow-700)<1e-8)});
+test('禁止負交易金額',()=>assert.throws(()=>estimateLoss({amount:-1,risk:30,protect:80,fee:1})));
+test('禁止超過100%風險比例',()=>assert.throws(()=>estimateLoss({amount:100,risk:120,protect:80,fee:1})));
+test('禁止無效費率',()=>assert.throws(()=>estimateLoss({amount:100,risk:20,protect:80,fee:25})));
+test('互動故事每關有兩種選擇與解釋',()=>assert.ok(story.every(x=>x.choices.length===2&&x.choices.every(c=>c[2]))));
